@@ -2,11 +2,17 @@ use std::str::FromStr;
 
 grammar;
 
+extern {
+    enum Token {
+        
+    }
+}
+
 Num: i32 = {
-    <s:r"[0-9]+"> => i32::from_str(s).unwrap();
+    <s:r"[0-9]+"> => i32::from_str(s).unwrap()
 }
 
 Term: i32 = {
     <n: Num> => n,
-    "(" <t; Term> ")" => t
+    "(" <t: Term> ")" => t
 }
