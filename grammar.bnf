@@ -1,0 +1,64 @@
+; This grammar represents a subset of C. This is a work in progress and is not complete. 
+; It covers the basic syntax of C, but does not cover all of the features of C.
+
+<program> ::= E | <global_unit>
+<global_unit> ::= <function>
+				| <struct>
+                | <typedef>
+                
+<typ> ::= "void"
+		| "int"
+        | "char"
+        | "double"
+		| "long"
+        | "short"
+        | "signed"
+        | "unsigned"
+        | <struct_ident>
+        | <ident>
+        
+<function> ::= <typ> <ident> ";"
+			| <typ> <ident> "{" <compound_statement> "}"
+
+            
+<typedef> ::= "typedef" <typ> <ident> ";"
+
+<compound_statement> ::= "{" <statement_list> "}"
+
+<statement_list> ::= E | <statement> <statement_list>
+
+; ---- Statements ----
+<statement> ::= <open_statement>
+            | <closed_statement>
+
+<open_statement> ::= "if" "(" <expression> ")" <closed_statement>
+                | "if" "(" <expression> ")" <open_statement>
+                | "if" "(" <expression> ")" <closed_statement> "else" <open_statement>
+                | "while" "(" <expression> ")" <open_statement>
+
+<closed_statement> ::= <simple_statement>
+                    | "if" "(" <expression> ")" <closed_statement> "else" <closed_statement>
+                    | "while" "(" <expression> ")" <closed_statement>
+
+<simple_statement> ::= ";"
+
+; ---- Struct Stuff ----
+<struct> ::= <struct_ident> ";"
+			| <struct_ident> "{" <struct_definition> "}" ";"
+
+<struct_definition> ::= "{" <struct_declarator_list> "}"
+
+<struct_declarator_list> ::= E | <struct_declarator> <struct_declarator_list>
+
+<struct_declarator> ::= <typ> <ident> ";"
+
+<struct_ident> ::= "struct" <ident>
+
+; ---- Operators ---- 
+<post_op> ::= "++" | "--"
+<binary_op> ::= "+" | "-" | "*" | "/" | "%" | "==" | "!=" | "<" | ">" | "<=" | ">=" | "&&" | "||" | "=" | "^" | "&" | "|" | "<<" | ">>"
+<unary_op> ::= "-" | "~" | "!"
+<assign_op> ::= "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "<<=" | ">>=" | "&=" | "^="  "|="
+
+; ---- Terminals ----
+<ident> ::= ([a-z] [A-Z]) ([a-z] [A-Z] [0-9])*

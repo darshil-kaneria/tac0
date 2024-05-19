@@ -8,6 +8,20 @@ extern {
     }
 }
 
+Program: Program = {
+    => Program::Empty,
+    <e: ExternalDeclaration> => Program::ExternalDeclaration(Box::new(e)),
+}
+
+ExternalDeclaration: ExternalDeclaration = {
+    <f: FunctionDefinition> => ExternalDeclaration::FunctionDefinition(Box::new(f)),
+    <d: Declaration> => ExternalDeclaration::Declaration(Box::new(d)),
+}
+
+FunctionDefinition: FunctionDefinition = {
+    <ds: DeclarationSpecifier>* <d: Declarator> <dd: Declaration>* <cs: CompoundStatement> => FunctionDefinition::Function(Box::new(d), ds, dd, cs),
+}
+
 Num: i32 = {
     <s:r"[0-9]+"> => i32::from_str(s).unwrap()
 }

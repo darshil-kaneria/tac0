@@ -60,8 +60,6 @@ pub struct StructDeclaration {
     pub struct_declarator_list: StructDeclaratorList
 }
 
-
-
 pub enum StorageClassSpecifier {
     Typedef,
     Extern,
@@ -74,6 +72,65 @@ pub enum Boolean {
     True,
     False,
 }
+// Either specify a type or a qualifier
+pub enum SpecifierQualifier {
+    TypeQualifer(Box<TypQualifier>),
+    TypeSpecifier(Box<Typ>),
+}
+
+pub enum StructDeclaratorListFollow {
+    Empty,
+    List(Box<StructDeclarator>, Box<StructDeclaratorListFollow>),
+}
+
+pub enum StructDeclaratorList {
+    Empty,
+    List(Box<StructDeclarator>, Box<StructDeclaratorListFollow>),
+}
+
+pub enum StructDeclarator {
+
+}
+
+pub enum BinOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+
+    // Logical Operators
+    LogicalOr,
+    LogicalAnd,
+    
+    // Bitwise Operators
+    BitwiseOr,
+    BitwiseAnd,
+
+    Charet,
+
+    // Conditional Operators
+    Equal,
+    NotEqual,
+    GreaterThan,
+    LessThan,
+    GreaterThanOrEqual,
+    LessThanOrEqual,
+
+    // Shift Operators
+    LeftShift,
+    RightShift,
+}
+
+pub enum UnaryOp {
+    
+}
+
+pub enum PostOp {
+    PlusPlus,
+    MinusMinus,
+}
+
 
 pub enum Expr {
 
