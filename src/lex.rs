@@ -16,7 +16,7 @@ pub enum Token {
     Slash,
 
     #[token("%")]
-    Mod,
+    Modulo,
 
     #[token("(")]
     LParen,
@@ -88,7 +88,7 @@ pub enum Token {
     SlashEqual,
 
     #[token("%=")]
-    ModEqual,
+    ModuloEqual,
 
     #[token("+=")]
     PlusEqual,
@@ -166,8 +166,17 @@ pub enum Token {
     #[token("char")]
     Char,
 
+    #[token("long")]
+    Long,
+
+    #[token("short")]
+    Short,
+
     #[token("void")]
     Void,
+
+    #[token("double")]
+    Double,
 
     #[token("struct")]
     Struct,
@@ -175,32 +184,8 @@ pub enum Token {
     #[token("typedef")]
     Typedef,
 
-    #[token("enum")]
-    Enum,
-
-    #[token("sizeof")]
-    Sizeof,
-
-    #[token("static")]
-    Static,
-
     #[token("const")]
     Const,
-
-    #[token("volatile")]
-    Volatile,
-
-    #[token("register")]
-    Register,
-
-    #[token("extern")]
-    Extern,
-
-    #[token("auto")]
-    Auto,
-
-    #[token("union")]
-    Union,
 
     #[token("case")]
     Case,

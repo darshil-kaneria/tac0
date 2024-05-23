@@ -16,6 +16,7 @@
         | "double"
 		| "long"
         | "short"
+        | "bool"
         | "signed"
         | "unsigned"
         | <struct_ident>
@@ -67,12 +68,14 @@
 
 <simple_expression> ::= <expression> <binary_op> <expression>
                 | <unary_op> <expression>
+                | "(" <expression> ")"
                 | <ident> "(" <argument_list> ")"
                 | <expression> "?" <expression> : <expression>
                 | <ident>
                 | <number>
  
-<argument_list> ::= E | <expression> <argument_list>
+<argument_list> ::= E | <expression> 
+                    | <expression> "," <argument_list>
 
 ; ---- Struct Stuff ----
 <struct> ::= <struct_ident> ";"
