@@ -21,6 +21,7 @@ GlobalUnit: GlobalUnit = {
     <hi: HeaderImport> => GlobalUnit::HeaderImport(hi)
 }
 
+// Function Grammar
 Function: Function = {
     <t: Typ> <id: Ident> "(" <p: ParamList> ")" ";" => Function::Declaration(t, id),
     <t: Typ> <id: Ident> "(" <p: ParamList> ")" "{" <cs: CompoundStatement> "}" => Function::Definition(t, id, p, cs) 
@@ -48,6 +49,63 @@ StructDeclarator: StructDeclarator = {
 // Typedef Grammar
 Typedef: Typedef = {
     "typedef" <t: Typ> <id: Ident> ";" => Typedef::Declaration(t, id)
+}
+
+// Statement Grammar
+Statement: Statement = {
+    <os: OpenStatement> => <>,
+    <cs: ClosedStatement> => <>
+}
+
+OpenStatement: Statement = {
+    "if" "(" <e: Expression> ")" <cs: ClosedStatement> => Statement::IfElse(e, Box::new(cs), None),
+    "if" "(" <e: Expression> ")" <os: OpenStatement> => Statement::IfElse(e, Box::new(os), None),
+    "if" "(" <e: Expression> ")" <cs: ClosedStatement> "else" <os: OpenStatement> => Statement::IfElse(e, Box::new(cs), Some(Box::new(os))),
+    "while" "(" <e: Expression> ")" <os: OpenStatement> => Statement::While(e, Box::new(os)),
+    "for" "(" <e1: Expression> ";" <e2: Expression> ";" <e3: Expression> ")" <os: OpenStatement> => Statement::For(e1, e2, e3, Box::new(os)),
+}
+
+ClosedStatement: Statement = {
+    <ncs: NonControlStatement> => <>,
+    "if" "(" <e: Expression> ")" <cs1: ClosedStatement> "else" <cs2: ClosedStatement> => Statement::IfElse(e, Box::new(cs), Some(Box::new(cs))),
+    "while" "(" <e: Expression> ")" <cs: ClosedStatement> => Statement::While(e, Box::new(cs)),
+    "for" "(" <e1: Expression> ";" <e2: Expression> ";" <e3: Expression> ")" <cs: ClosedStatement> => Statement::For(e1, e2, e3, Box::new(cs)),
+
+}
+
+NonControlStatement: Statement = {
+    <s: SimpleStatement> ";" => Statement::Simple(Box::new(s)),
+    <cs: CompoundStatement> => Statement::Compound(Box::new(cs)),
+    "return" <e: expression> ";" => Statement::Return(e) 
+}
+
+// 1. Careful about some dynamic semantics when expanding x++ to x = x+1?
+// 2. "x;" is equal to "EmptyVar = x;" 
+SimpleStatement: Statement = {
+    <e1: Expression> <a: AssignOp> <e2: Expression> => Statement::Assignment(e1, a, e2),
+    <e: Expression> <p: PostOp> => match p {
+        PostOp::PlusPlus => Statement::Assignment(e, AssignOp::Equal, Expression::BinaryOp(e, BinaryOp::Plus, Expression::Constant(1))),
+        PostOp::MinusMinus => Statement::Assignment(e, AssignOp::Equal, Expression::BinaryOp(e, BinaryOp::Minus, Expression::Constant(1)))
+    },
+    <e: Expression> => Statement::Assignment(Expression::EmptyVar, AssignOp::Equal, e),
+    <t: Typ> <id: Ident> => Statement::Declaration(t, id),
+    <t: Typ> <id: Ident> "=" <e: Expression> => Statement::Definition(t, id, Box::new(e))
+}
+
+// Expression Grammar
+
+Expression: Expression = {
+    <se: SimpleExpression> => <>
+    <me: MemoryExpression> => <>
+}
+
+// Convert x->a to *(x).a
+MemoryExpression: Expression = {
+    "*" <e: Expression> => Expression::Dereference(e),
+    "&" <e: Expression> => Expression::AddressOf(e),
+    <e1: Expression> "[" <e2: Expression> "]" => Expression::ArrayAccess(e1, e2),
+    <e: Expression> "." <i: Ident> => Expression::MemberAccess(e, i),
+    <e: Expression> "->" <i: Ident> => Expression::MemberAccess(Expression::Dereference(e), i)
 }
 
 
