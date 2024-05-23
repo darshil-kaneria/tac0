@@ -5,6 +5,10 @@
 <global_unit> ::= <function>
 				| <struct>
                 | <typedef>
+                | <header_import>
+
+<header_import> ::= "#include" "<" <ident> ".h" ">"
+                | "#include" "\"" <ident> ".h" "\""
                 
 <typ> ::= "void"
 		| "int"
@@ -17,8 +21,8 @@
         | <struct_ident>
         | <ident>
         
-<function> ::= <typ> <ident> ";"
-			| <typ> <ident> "{" <compound_statement> "}"
+<function> ::= <typ> <ident> "(" <param_list> ")" ";"
+			| <typ> <ident> "(" <param_list> ")" "{" <compound_statement> "}"
 
             
 <typedef> ::= "typedef" <typ> <ident> ";"
@@ -35,18 +39,46 @@
                 | "if" "(" <expression> ")" <open_statement>
                 | "if" "(" <expression> ")" <closed_statement> "else" <open_statement>
                 | "while" "(" <expression> ")" <open_statement>
+                | "for" "(" <expression> ";" <expression> ";" <expression> ")" <open_statement>
 
-<closed_statement> ::= <simple_statement>
+<closed_statement> ::= <non_control_statement>
                     | "if" "(" <expression> ")" <closed_statement> "else" <closed_statement>
                     | "while" "(" <expression> ")" <closed_statement>
+                    | "for" "(" <expression> ";" <expression> ";" <expression> ")" <closed_statement>
 
-<simple_statement> ::= ";"
+<non_control_statement> ::= <simple_statement> ";"
+                    | <compound_statement>
+                    | "return" <expression> ";"
+
+<simple_statement> ::= <expression> <assign_op> <expression>
+                    | <expression> <post_op>
+                    | <expression>
+                    | <typ> <ident>
+                    | <typ> <ident> "=" <expression>
+
+<expression> ::= <simple_expression>
+                | <memory_expression>
+
+<memory_expression> ::= "*" <expression>
+                    | "&" <expression>
+                    | <expression> "[" <expression> "]"
+                    | <expression> "." <ident>
+                    | <expression> "->" <ident>
+
+<simple_expression> ::= <expression> <binary_op> <expression>
+                | <unary_op> <expression>
+                | <ident> "(" <argument_list> ")"
+                | <expression> "?" <expression> : <expression>
+                | <ident>
+                | <number>
+ 
+<argument_list> ::= E | <expression> <argument_list>
 
 ; ---- Struct Stuff ----
 <struct> ::= <struct_ident> ";"
-			| <struct_ident> "{" <struct_definition> "}" ";"
+			| <struct_ident> <struct_members> ";"
 
-<struct_definition> ::= "{" <struct_declarator_list> "}"
+<struct_members> ::= "{" <struct_declarator_list> "}"
 
 <struct_declarator_list> ::= E | <struct_declarator> <struct_declarator_list>
 
@@ -62,3 +94,4 @@
 
 ; ---- Terminals ----
 <ident> ::= ([a-z] [A-Z]) ([a-z] [A-Z] [0-9])*
+<number> ::= ([0-9]) ([0-9])*

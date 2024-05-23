@@ -8,19 +8,54 @@ extern {
     }
 }
 
+// Global Grammar
 Program: Program = {
     => Program::Empty,
-    <e: ExternalDeclaration> => Program::ExternalDeclaration(Box::new(e)),
+    <g: GlobalUnit> => Program::GlobalUnit(g)
 }
 
-ExternalDeclaration: ExternalDeclaration = {
-    <f: FunctionDefinition> => ExternalDeclaration::FunctionDefinition(Box::new(f)),
-    <d: Declaration> => ExternalDeclaration::Declaration(Box::new(d)),
+GlobalUnit: GlobalUnit = {
+    <f: Function> => GlobalUnit::Function(f),
+    <s: Struct> => GlobalUnit::Struct(s),
+    <td: Typedef> => GlobalUnit::Typedef(td),
+    <hi: HeaderImport> => GlobalUnit::HeaderImport(hi)
 }
 
-FunctionDefinition: FunctionDefinition = {
-    <ds: DeclarationSpecifier>* <d: Declarator> <dd: Declaration>* <cs: CompoundStatement> => FunctionDefinition::Function(Box::new(d), ds, dd, cs),
+Function: Function = {
+    <t: Typ> <id: Ident> "(" <p: ParamList> ")" ";" => Function::Declaration(t, id),
+    <t: Typ> <id: Ident> "(" <p: ParamList> ")" "{" <cs: CompoundStatement> "}" => Function::Definition(t, id, p, cs) 
 }
+
+// Struct Grammar
+Struct: Struct = {
+    <si: StructIdent> ";" => Struct::Declaration(si),
+    <si: StructIdent> <sm: StructMembers> ";" => Struct::Definition(si, sm)
+}
+
+StructMembers: StructMembers = {
+    "{" <sdl: StructDeclaratorList> "}" => StructMembers::List(sdl)
+}
+
+StructDeclaratorList: StructDeclaratorList = {
+    => StructDeclaratorList::Empty,
+    <sd: StructDeclarator> <sdl: StructDeclaratorList> => StructDeclaratorList::ListFollow(sd, Box::new(sdl))
+}
+
+StructDeclarator: StructDeclarator = {
+    <t: Typ> <id: Ident> ";" => StructDeclarator::Declaration(t, id)
+}
+
+// Typedef Grammar
+Typedef: Typedef = {
+    "typedef" <t: Typ> <id: Ident> ";" => Typedef::Declaration(t, id)
+}
+
+
+// Terminal Grammar
+StructIdent: String = {
+    "struct" <id: Ident> => id
+}
+
 
 Num: i32 = {
     <s:r"[0-9]+"> => i32::from_str(s).unwrap()
