@@ -1,7 +1,6 @@
 use logos::Logos;
 
 pub enum Token {
-
     // Operators and other symbols
     #[token("+")]
     Plus,

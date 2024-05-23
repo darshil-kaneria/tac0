@@ -25,6 +25,9 @@
 <function> ::= <typ> <ident> "(" <param_list> ")" ";"
 			| <typ> <ident> "(" <param_list> ")" "{" <compound_statement> "}"
 
+<param_list> ::= E | <param> 
+                | <param> "," <param_list>
+
             
 <typedef> ::= "typedef" <typ> <ident> ";"
 

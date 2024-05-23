@@ -44,6 +44,7 @@ extern {
         "[" => Token::LBrac,
         "]" => Token::RBrac,
         ";" => Token::Semicolon,
+        ":" => Token::Colon,
         "," => Token::Comma,
         "." => Token::Dot,
         "->" => Token::Arrow,
@@ -67,13 +68,13 @@ extern {
         "typedef" => Token::Typedef,
         "true" => Token::True,
         "false" => Token::False,
-        <id:r"[a-zA-Z_][a-zA-Z0-9_]*"> => Token::Ident(id.to_string()),
-        <num:r"[0-9]+"> => Token::Number(num.parse().unwrap())
+        r"[a-zA-Z_][a-zA-Z0-9_]*" => Token::Identifier,
+        r"[0-9]+" => Token::Number
     }
 }
 
 // Global Grammar
-Program: Program = {
+pub Program: Program = {
     => Program::Empty,
     <g: GlobalUnit> => Program::GlobalUnit(g)
 }
@@ -82,13 +83,18 @@ GlobalUnit: GlobalUnit = {
     <f: Function> => GlobalUnit::Function(f),
     <s: Struct> => GlobalUnit::Struct(s),
     <td: Typedef> => GlobalUnit::Typedef(td),
-    <hi: HeaderImport> => GlobalUnit::HeaderImport(hi)
 }
 
 // Function Grammar
 Function: Function = {
     <t: Typ> <id: Ident> "(" <p: ParamList> ")" ";" => Function::Declaration(t, id),
     <t: Typ> <id: Ident> "(" <p: ParamList> ")" "{" <cs: CompoundStatement> "}" => Function::Definition(t, id, p, cs) 
+}
+
+ParamList: ParamList = {
+    => ParamList::Empty,
+    <t: Typ> <id: Ident> => ParamList::List(t, id, Box::new(ParamList::Empty)),
+    <t: Typ> <id: Ident> "," <pl: ParamList> => ParamList::List(t, id, Box::new(pl))
 }
 
 // Struct Grammar
@@ -117,7 +123,7 @@ Typedef: Typedef = {
 
 // Statement Grammar
 Statement: Statement = {
-    <os: OpenStatement> => <>,
+    // <os: OpenStatement> => <>,
     <cs: ClosedStatement> => <>
 }
 
@@ -140,7 +146,7 @@ ClosedStatement: Statement = {
 NonControlStatement: Statement = {
     <s: SimpleStatement> ";" => Statement::Simple(Box::new(s)),
     <cs: CompoundStatement> => Statement::Compound(Box::new(cs)),
-    "return" <e: expression> ";" => Statement::Return(e) 
+    "return" <e: Expression> ";" => Statement::Return(e) 
 }
 
 // 1. Careful about some dynamic semantics when expanding x++ to x = x+1?
@@ -156,15 +162,35 @@ SimpleStatement: Statement = {
     <t: Typ> <id: Ident> "=" <e: Expression> => Statement::Definition(t, id, Box::new(e))
 }
 
-// Expression Grammar
+CompoundStatement: Statement = {
+    "{" <ss: StatementList> "}" => Statement::List(ss)
+}
 
+StatementList: StatementList = {
+    => StatementList::Empty,
+    <s: Statement> <ss: StatementList> => StatementList::ListFollow(s, Box::new(ss))
+}
+
+// Expression Grammar
 Expression: Expression = {
     <se: SimpleExpression> => <>
-    <me: MemoryExpression> => <>
+}
+
+PrimaryExpression: Expression = {
+    "(" <e: SimpleExpression> ")" => e,
+    <op: UnaryOp> <e: SimpleExpression> => Expression::UnaryOp(op, e),
+    <id: Ident> "(" <al: ArgumentList> ")" => Expression::FunctionCall(id, al),
+    <id: Ident> => Expression::Variable(id),
+    <num: Number> => Expression::Constant(num),
+    // <cond: Expression> "?" <e1: Expression> ":" <e2: Expression> => Expression::Ternary(cond, e1, e2),
 }
 
 // Convert x->a to *(x).a
 MemoryExpression: Expression = {
+    #[precedence(level="0")]
+    PrimaryExpression,
+
+    #[precedence(level="1")]
     "*" <e: Expression> => Expression::Dereference(e),
     "&" <e: Expression> => Expression::AddressOf(e),
     <e1: Expression> "[" <e2: Expression> "]" => Expression::ArrayAccess(e1, e2),
@@ -174,53 +200,47 @@ MemoryExpression: Expression = {
 
 SimpleExpression: Expression = {
     #[precedence(level="0")]
-    #[assoc(side="right")]
-    "(" <e: Expression> ")" => <>
-    <op: UnaryOp> <e: Expression> => Expression::UnaryOp(op, e),
-    <id: Ident> "(" <al: ArgumentList> ")" => Expression::FunctionCall(id, al),
-    <cond: Expression> "?" <e1: Expression> ":" <e2: Expression> => Expression::Ternary(cond, e1, e2),
-    <id: Ident> => Expression::Variable(id),
-    <num: Number> => Expression::Constant(num),
+    <me: MemoryExpression> => <>,
     
     #[precedence(level="1")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order1BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
+    <e1: SimpleExpression> <op: Order1BinOp> <e2: SimpleExpression> => Expression::BinOp(e1, op, e2),
 
     #[precedence(level="2")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order2BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
+    <e1: SimpleExpression> <op: Order2BinOp> <e2: SimpleExpression> => Expression::BinOp(e1, op, e2),
 
     #[precedence(level="3")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order3BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
+    <e1: SimpleExpression> <op: Order3BinOp> <e2: SimpleExpression> => Expression::BinOp(e1, op, e2),
 
     #[precedence(level="4")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order4BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
+    <e1: SimpleExpression> <op: Order4BinOp> <e2: SimpleExpression> => Expression::BinOp(e1, op, e2),
 
     #[precedence(level="5")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order5BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
+    <e1: SimpleExpression> <op: Order5BinOp> <e2: SimpleExpression> => Expression::BinOp(e1, op, e2),
 
     #[precedence(level="6")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order6BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
+    <e1: SimpleExpression> <op: Order6BinOp> <e2: SimpleExpression> => Expression::BinOp(e1, op, e2),
 
     #[precedence(level="7")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order7BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
+    <e1: SimpleExpression> <op: Order7BinOp> <e2: SimpleExpression> => Expression::BinOp(e1, op, e2),
 
     #[precedence(level="8")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order8BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
+    <e1: SimpleExpression> <op: Order8BinOp> <e2: SimpleExpression> => Expression::BinOp(e1, op, e2),
 
     #[precedence(level="9")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order9BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
+    <e1: SimpleExpression> <op: Order9BinOp> <e2: SimpleExpression> => Expression::BinOp(e1, op, e2),
 
     #[precedence(level="10")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order10BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2)
+    <e1: SimpleExpression> <op: Order10BinOp> <e2: SimpleExpression> => Expression::BinOp(e1, op, e2)
 }
 
 ArgumentList: ArgumentList = {
@@ -297,6 +317,11 @@ Order9BinOp: BinaryOp = {
 
 Order10BinOp: BinaryOp = {
     "||" => BinaryOp::LogicalOr
+}
+
+PostOp: PostOp = {
+    "++" => PostOp::PlusPlus,
+    "--" => PostOp::MinusMinus
 }
 
 Typ: Typ = {
