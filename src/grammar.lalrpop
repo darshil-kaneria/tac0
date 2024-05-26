@@ -174,7 +174,6 @@ StatementList: StatementList = {
 // Expression Grammar
 PrimaryExpression: Expression = {
     "(" <e: Expression> ")" => e,
-    <op: UnaryOp> <e: Expression> => Expression::UnaryOp(op, e),
     <id: Ident> "(" <al: ArgumentList> ")" => Expression::FunctionCall(id, al),
     <id: Ident> => Expression::Variable(id),
     <num: Number> => Expression::Constant(num),
@@ -187,8 +186,6 @@ MemoryExpression: Expression = {
     PrimaryExpression,
 
     #[precedence(level="1")]
-    "*" <e: Expression> => Expression::Dereference(e),
-    "&" <e: MemoryExpression> => Expression::AddressOf(e),
     <e1: MemoryExpression> "[" <e2: Expression> "]" => Expression::ArrayAccess(e1, e2),
     <e: MemoryExpression> "." <i: Ident> => Expression::MemberAccess(e, i),
     <e: MemoryExpression> "->" <i: Ident> => Expression::MemberAccess(Expression::Dereference(e), i)
@@ -197,9 +194,12 @@ MemoryExpression: Expression = {
 Expression: Expression = {
     #[precedence(level="0")]
     <me: MemoryExpression> => <>,
+    "*" <e: Expression> => Expression::Dereference(e),
+    "&" <e: Expression> => Expression::AddressOf(e),
+    <op: UnaryOp> <e: Expression> => Expression::UnaryOp(op, e),
     
     #[precedence(level="1")]
-    // #[assoc(side="left")]
+    #[assoc(side="left")]
     <e1: Expression> <op: Order1BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
 
     #[precedence(level="2")]
