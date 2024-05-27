@@ -1,5 +1,5 @@
-use std::str::FromStr;
-use crate::lexer::Token;
+use crate::lex::Token;
+use crate::ast::*;
 
 grammar;
 
@@ -68,27 +68,27 @@ extern {
         "typedef" => Token::Typedef,
         "true" => Token::True,
         "false" => Token::False,
-        r"[a-zA-Z_][a-zA-Z0-9_]*" => Token::Identifier,
-        r"[0-9]+" => Token::Number
+        "ident" => Token::Identifier(str),
+        "num" => Token::Number(i32)
     }
 }
 
 // Global Grammar
 pub Program: Program = {
     => Program::Empty,
-    <g: GlobalUnit> => Program::GlobalUnit(g)
+    <g: GlobalUnit> => Program::GlobalUnit(Box::new(g))
 }
 
 GlobalUnit: GlobalUnit = {
-    <f: Function> => GlobalUnit::Function(f),
-    <s: Struct> => GlobalUnit::Struct(s),
-    <td: Typedef> => GlobalUnit::Typedef(td),
+    <f: Function> => GlobalUnit::Function(Box::new(f)),
+    <s: Struct> => GlobalUnit::Struct(Box::new(s)),
+    <td: Typedef> => GlobalUnit::Typedef(Box::new(td)),
 }
 
 // Function Grammar
 Function: Function = {
-    <t: Typ> <id: Ident> "(" <p: ParamList> ")" ";" => Function::Declaration(t, id),
-    <t: Typ> <id: Ident> "(" <p: ParamList> ")" "{" <cs: CompoundStatement> "}" => Function::Definition(t, id, p, cs) 
+    <t: Typ> <id: Ident> "(" <p: ParamList> ")" ";" => Function::Declaration(t, id, Box::new(p)),
+    <t: Typ> <id: Ident> "(" <p: ParamList> ")" "{" <cs: CompoundStatement> "}" => Function::Definition(t, id, Box::new(p), Box::new(cs)) 
 }
 
 ParamList: ParamList = {
@@ -100,11 +100,11 @@ ParamList: ParamList = {
 // Struct Grammar
 Struct: Struct = {
     <si: StructIdent> ";" => Struct::Declaration(si),
-    <si: StructIdent> <sm: StructMembers> ";" => Struct::Definition(si, sm)
+    <si: StructIdent> <sm: StructMembers> ";" => Struct::Definition(si, Box::new(sm))
 }
 
 StructMembers: StructMembers = {
-    "{" <sdl: StructDeclaratorList> "}" => StructMembers::List(sdl)
+    "{" <sdl: StructDeclaratorList> "}" => StructMembers::List(Box::new(sdl))
 }
 
 StructDeclaratorList: StructDeclaratorList = {
@@ -128,53 +128,53 @@ Statement: Statement = {
 }
 
 OpenStatement: Statement = {
-    "if" "(" <e: Expression> ")" <cs: ClosedStatement> => Statement::IfElse(e, Box::new(cs), None),
-    "if" "(" <e: Expression> ")" <os: OpenStatement> => Statement::IfElse(e, Box::new(os), None),
-    "if" "(" <e: Expression> ")" <cs: ClosedStatement> "else" <os: OpenStatement> => Statement::IfElse(e, Box::new(cs), Some(Box::new(os))),
-    "while" "(" <e: Expression> ")" <os: OpenStatement> => Statement::While(e, Box::new(os)),
-    "for" "(" <e1: Expression> ";" <e2: Expression> ";" <e3: Expression> ")" <os: OpenStatement> => Statement::For(e1, e2, e3, Box::new(os)),
+    "if" "(" <e: Expression> ")" <cs: ClosedStatement> => Statement::IfElse(Box::new(e), Box::new(cs), None),
+    "if" "(" <e: Expression> ")" <os: OpenStatement> => Statement::IfElse(Box::new(e), Box::new(os), None),
+    "if" "(" <e: Expression> ")" <cs: ClosedStatement> "else" <os: OpenStatement> => Statement::IfElse(Box::new(e), Box::new(cs), Some(Box::new(os))),
+    "while" "(" <e: Expression> ")" <os: OpenStatement> => Statement::While(Box::new(e), Box::new(os)),
+    "for" "(" <e1: Expression> ";" <e2: Expression> ";" <e3: Expression> ")" <os: OpenStatement> => Statement::For(Box::new(e1), Box::new(e2), Box::new(e3), Box::new(os)),
 }
 
 ClosedStatement: Statement = {
     <ncs: NonControlStatement> => <>,
-    "if" "(" <e: Expression> ")" <cs1: ClosedStatement> "else" <cs2: ClosedStatement> => Statement::IfElse(e, Box::new(cs), Some(Box::new(cs))),
-    "while" "(" <e: Expression> ")" <cs: ClosedStatement> => Statement::While(e, Box::new(cs)),
-    "for" "(" <e1: Expression> ";" <e2: Expression> ";" <e3: Expression> ")" <cs: ClosedStatement> => Statement::For(e1, e2, e3, Box::new(cs)),
+    "if" "(" <e: Expression> ")" <cs1: ClosedStatement> "else" <cs2: ClosedStatement> => Statement::IfElse(Box::new(e), Box::new(cs1), Some(Box::new(cs2))),
+    "while" "(" <e: Expression> ")" <cs: ClosedStatement> => Statement::While(Box::new(e), Box::new(cs)),
+    "for" "(" <e1: Expression> ";" <e2: Expression> ";" <e3: Expression> ")" <cs: ClosedStatement> => Statement::For(Box::new(e1), Box::new(e2), Box::new(e3), Box::new(cs)),
 
 }
 
 NonControlStatement: Statement = {
     <s: SimpleStatement> ";" => Statement::Simple(Box::new(s)),
     <cs: CompoundStatement> => Statement::Compound(Box::new(cs)),
-    "return" <e: Expression> ";" => Statement::Return(e) 
+    "return" <e: Expression> ";" => Statement::Return(Box::new(e)) 
 }
 
 // 1. Careful about some dynamic semantics when expanding x++ to x = x+1?
 // 2. "x;" is equal to "EmptyVar = x;" 
 SimpleStatement: Statement = {
-    <e1: Expression> <a: AssignOp> <e2: Expression> => Statement::Assignment(e1, a, e2),
+    <e1: Expression> <a: AssignOp> <e2: Expression> => Statement::Assignment(Box::new(e1), a, Box::new(e2)),
     <e: Expression> <p: PostOp> => match p {
-        PostOp::PlusPlus => Statement::Assignment(e, AssignOp::Equal, Expression::BinaryOp(e, BinaryOp::Plus, Expression::Constant(1))),
-        PostOp::MinusMinus => Statement::Assignment(e, AssignOp::Equal, Expression::BinaryOp(e, BinaryOp::Minus, Expression::Constant(1)))
+        PostOp::PlusPlus => Statement::Assignment(Box::new(e), AssignOp::Equal, Expression::BinaryOp(Box::new(e), BinaryOp::Plus, Box::new(Expression::Constant(1)))),
+        PostOp::MinusMinus => Statement::Assignment(Box::new(e), AssignOp::Equal, Expression::BinaryOp(Box::new(e), BinaryOp::Minus, Box::new(Expression::Constant(1))))
     },
-    <e: Expression> => Statement::Assignment(Expression::EmptyVar, AssignOp::Equal, e),
+    <e: Expression> => Statement::Assignment(Box::new(Expression::EmptyVar), AssignOp::Equal, Box::new(e)),
     <t: Typ> <id: Ident> => Statement::Declaration(t, id),
     <t: Typ> <id: Ident> "=" <e: Expression> => Statement::Definition(t, id, Box::new(e))
 }
 
 CompoundStatement: Statement = {
-    "{" <ss: StatementList> "}" => Statement::List(ss)
+    "{" <ss: StatementList> "}" => Statement::List(Box::new(ss))
 }
 
 StatementList: StatementList = {
     => StatementList::Empty,
-    <s: Statement> <ss: StatementList> => StatementList::ListFollow(s, Box::new(ss))
+    <s: Statement> <ss: StatementList> => StatementList::ListFollow(Box::new(s), Box::new(ss))
 }
 
 // Expression Grammar
 PrimaryExpression: Expression = {
     "(" <e: Expression> ")" => e,
-    <id: Ident> "(" <al: ArgumentList> ")" => Expression::FunctionCall(id, al),
+    <id: Ident> "(" <al: ArgumentList> ")" => Expression::FunctionCall(id, Box::new(al)),
     <id: Ident> => Expression::Variable(id),
     <num: Number> => Expression::Constant(num),
     // <cond: Expression> "?" <e1: Expression> ":" <e2: Expression> => Expression::Ternary(cond, e1, e2),
@@ -186,63 +186,63 @@ MemoryExpression: Expression = {
     PrimaryExpression,
 
     #[precedence(level="1")]
-    <e1: MemoryExpression> "[" <e2: Expression> "]" => Expression::ArrayAccess(e1, e2),
-    <e: MemoryExpression> "." <i: Ident> => Expression::MemberAccess(e, i),
-    <e: MemoryExpression> "->" <i: Ident> => Expression::MemberAccess(Expression::Dereference(e), i)
+    <e1: MemoryExpression> "[" <e2: Expression> "]" => Expression::ArrayAccess(Box::new(e1), Box::new(e2)),
+    <e: MemoryExpression> "." <i: Ident> => Expression::MemberAccess(Box::new(e), i),
+    <e: MemoryExpression> "->" <i: Ident> => Expression::MemberAccess(Box::new(Expression::Dereference(Box::new(e))), i)
 }
 
 Expression: Expression = {
     #[precedence(level="0")]
     <me: MemoryExpression> => <>,
-    "*" <e: Expression> => Expression::Dereference(e),
-    "&" <e: Expression> => Expression::AddressOf(e),
-    <op: UnaryOp> <e: Expression> => Expression::UnaryOp(op, e),
+    "*" <e: Expression> => Expression::Dereference(Box::new(e)),
+    "&" <e: Expression> => Expression::AddressOf(Box::new(e)),
+    <op: UnaryOp> <e: Expression> => Expression::UnaryOp(op, Box::new(e)),
     
     #[precedence(level="1")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order1BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
+    <e1: Expression> <op: Order1BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2)),
 
     #[precedence(level="2")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order2BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
+    <e1: Expression> <op: Order2BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2)),
 
     #[precedence(level="3")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order3BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
+    <e1: Expression> <op: Order3BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2)),
 
     #[precedence(level="4")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order4BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
+    <e1: Expression> <op: Order4BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2)),
 
     #[precedence(level="5")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order5BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
+    <e1: Expression> <op: Order5BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2)),
 
     #[precedence(level="6")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order6BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
+    <e1: Expression> <op: Order6BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2)),
 
     #[precedence(level="7")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order7BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
+    <e1: Expression> <op: Order7BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2)),
 
     #[precedence(level="8")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order8BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
+    <e1: Expression> <op: Order8BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2)),
 
     #[precedence(level="9")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order9BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2),
+    <e1: Expression> <op: Order9BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2)),
 
     #[precedence(level="10")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order10BinOp> <e2: Expression> => Expression::BinOp(e1, op, e2)
+    <e1: Expression> <op: Order10BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2))
 }
 
 ArgumentList: ArgumentList = {
     => ArgumentList::Empty,
-    <e: Expression> => ArgumentList::List(e, Box::new(ArgumentList::Empty)),
-    <e: Expression> "," <al: ArgumentList> => ArgumentList::List(e, Box::new(al))
+    <e: Expression> => ArgumentList::List(Box::new(e), Box::new(ArgumentList::Empty)),
+    <e: Expression> "," <al: ArgumentList> => ArgumentList::List(Box::new(e), Box::new(al))
 }
 
 
@@ -257,8 +257,8 @@ AssignOp: AssignOp = {
     "=" => AssignOp::Equal,
     "+=" => AssignOp::PlusEqual,
     "-=" => AssignOp::MinusEqual,
-    "*=" => AssignOp::MultiplyEqual,
-    "/=" => AssignOp::DivideEqual,
+    "*=" => AssignOp::StarEqual,
+    "/=" => AssignOp::SlashEqual,
     "%=" => AssignOp::ModuloEqual,
     "<<=" => AssignOp::LeftShiftEqual,
     ">>=" => AssignOp::RightShiftEqual,
@@ -338,9 +338,9 @@ StructIdent: String = {
 }
 
 Ident: String = {
-    <id:r"[a-zA-Z_][a-zA-Z0-9_]*"> => id.to_string()
+    <id:"ident"> => id.to_string()
 }
 
 Number: i32 = {
-    <s:r"[0-9]+"> => n.parse(s).unwrap()
+    <s:"num"> => s.into_number().unwrap()
 }

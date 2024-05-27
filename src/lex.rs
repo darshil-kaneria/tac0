@@ -1,6 +1,26 @@
 use logos::Logos;
+use logos::Lexer;
+use std::{fmt, num::ParseIntError};
+use core::fmt::{Display, Formatter};
 
-pub enum Token {
+fn from_num<'b>(lex: &mut Lexer<'b, Token<'b>>) -> Result<i64, String> {
+    let slice = lex.slice();
+  
+    let res: Result<i64, ParseIntError> = slice.parse();
+  
+    if res.is_err() {
+      return Err(format!("Parsing failed wtih Error {:?}", res.unwrap_err()));
+    }
+    let out = res.unwrap();
+    if out > ((i32::MIN as i64).abs()) {
+      // All numbers are positive because - is lexed seperately
+      return Err(format!("Number {} is out of bounds", out));
+    }
+    Ok(out)
+  }
+
+#[derive(Logos, Debug, PartialEq, Clone)]
+pub enum Token<'a> {
     // Operators and other symbols
     #[token("+")]
     Plus,
@@ -38,6 +58,9 @@ pub enum Token {
     #[token(";")]
     Semicolon,
 
+    #[token(":")]
+    Colon,
+
     #[token("++")]
     PlusPlus,
 
@@ -48,7 +71,7 @@ pub enum Token {
     Arrow,
 
     #[token("=>")]
-    GreaterThanEqualTo,
+    GreaterThanEqual,
 
     #[token(">")]
     GreaterThan,
@@ -57,16 +80,13 @@ pub enum Token {
     LessThan,
 
     #[token("<=")]
-    LessThanEqualTo,
+    LessThanEqual,
 
     #[token(".")]
     Dot,
 
     #[token(",")]
     Comma,
-
-    #[token("&")]
-    Ampersand,
 
     #[token("&&")]
     LogicalAnd,
@@ -91,6 +111,9 @@ pub enum Token {
 
     #[token("+=")]
     PlusEqual,
+
+    #[token("!=")]
+    NotEqual,
 
     #[token("-=")]
     MinusEqual,
@@ -199,11 +222,11 @@ pub enum Token {
     Goto,
 
     // Regexes
-    #[regex(r"[0-9]+")]
-    Number,
+    #[regex(r"[0-9]+", from_num)]
+    Number(i64),
 
     #[regex("[_a-zA-Z][_a-zA-Z0-9]*")]
-    Identifier,
+    Identifier(&'a str),
 
     #[regex(r#""([^"\\]|\\.)*""#)]
     StringLiteral,
@@ -220,4 +243,10 @@ pub enum Token {
 
     #[error]
     Error
+}
+
+impl Display for Token<'static> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
