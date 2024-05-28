@@ -1,23 +1,5 @@
 use logos::Logos;
-use logos::Lexer;
-use std::{fmt, num::ParseIntError};
-use core::fmt::{Display, Formatter};
-
-fn from_num<'b>(lex: &mut Lexer<'b, Token<'b>>) -> Result<i64, String> {
-    let slice = lex.slice();
-  
-    let res: Result<i64, ParseIntError> = slice.parse();
-  
-    if res.is_err() {
-      return Err(format!("Parsing failed wtih Error {:?}", res.unwrap_err()));
-    }
-    let out = res.unwrap();
-    if out > ((i32::MIN as i64).abs()) {
-      // All numbers are positive because - is lexed seperately
-      return Err(format!("Number {} is out of bounds", out));
-    }
-    Ok(out)
-  }
+use std::fmt;
 
 #[derive(Logos, Debug, PartialEq, Clone)]
 pub enum Token<'a> {
@@ -131,10 +113,10 @@ pub enum Token<'a> {
     BitwiseOrEqual,
 
     #[token("^=")]
-    CaretEqual,
+    BitwiseXorEqual,
 
     #[token("^")]
-    Caret,
+    BitwiseXor,
 
     #[token("!")]
     Exclamation,
@@ -194,8 +176,23 @@ pub enum Token<'a> {
     #[token("short")]
     Short,
 
+    #[token("unsigned")]
+    Unsigned,
+
+    #[token("bool")]
+    Bool,
+
+    #[token("signed")]
+    Signed,
+
     #[token("void")]
     Void,
+
+    #[token("true")]
+    True,
+
+    #[token("false")]
+    False,
 
     #[token("double")]
     Double,
@@ -222,7 +219,7 @@ pub enum Token<'a> {
     Goto,
 
     // Regexes
-    #[regex(r"[0-9]+", from_num)]
+    #[regex(r"[0-9]+", |lex| lex.slice().parse())]
     Number(i64),
 
     #[regex("[_a-zA-Z][_a-zA-Z0-9]*")]
@@ -242,11 +239,11 @@ pub enum Token<'a> {
     Whitespace,
 
     #[error]
-    Error
+    Error,
 }
 
-impl Display for Token<'static> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
+impl<'a> fmt::Display for Token<'a> {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{:#?}", self)
+  }
 }

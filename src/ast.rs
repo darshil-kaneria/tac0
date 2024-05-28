@@ -67,23 +67,27 @@ pub enum StatementList {
     ListFollow(Box<Statement>, Box<StatementList>)
 }
 
+#[derive(Clone)]
 pub enum Expression {
+    EmptyVar,
     FunctionCall(Ident, Box<ArgumentList>),
     Variable(Ident),
-    Constant(i32),
+    Constant(i64),
     ArrayAccess(Box<Expression>, Box<Expression>),
     MemberAccess(Box<Expression>, Ident),
     Dereference(Box<Expression>),
     AddressOf(Box<Expression>),
     UnaryOp(UnaryOp, Box<Expression>),
-    BinOp(Box<Expression>, BinaryOp, Box<Expression>),
+    BinaryOp(Box<Expression>, BinaryOp, Box<Expression>),
 }
 
+#[derive(Clone)]
 pub enum ArgumentList {
     Empty,
     List(Box<Expression>, Box<ArgumentList>),
 }
 
+#[derive(Clone)]
 pub enum UnaryOp {
     Negate,
     Not,
@@ -104,6 +108,7 @@ pub enum AssignOp {
     BitwiseOrEqual
 }
 
+#[derive(Clone)]
 pub enum BinaryOp {
     Multiply,
     Divide,
@@ -145,5 +150,4 @@ pub enum Typ {
 
 pub type Ident = String;
 pub type StructIdent = String;
-pub type Number = i32;
 

@@ -1,10 +1,13 @@
 use crate::lex::Token;
 use crate::ast::*;
 
-grammar;
+grammar<'input>;
 
 extern {
-    enum Token {
+    type Location = usize;
+    type Error = String;
+    
+    enum Token<'input> {
         "+" => Token::Plus,
         "-" => Token::Minus,
         "*" => Token::Asterisk,
@@ -27,7 +30,7 @@ extern {
         "=" => Token::Equal,
         "+=" => Token::PlusEqual,
         "-=" => Token::MinusEqual,
-        "*=" => Token::MultiplyEqual,
+        "*=" => Token::StarEqual,
         "/=" => Token::SlashEqual,
         "%=" => Token::ModuloEqual,
         "<<=" => Token::LeftShiftEqual,
@@ -68,8 +71,8 @@ extern {
         "typedef" => Token::Typedef,
         "true" => Token::True,
         "false" => Token::False,
-        "ident" => Token::Identifier(str),
-        "num" => Token::Number(i32)
+        "ident" => Token::Identifier(<&'input str>),
+        "num" => Token::Number(<i64>)
     }
 }
 
@@ -154,8 +157,8 @@ NonControlStatement: Statement = {
 SimpleStatement: Statement = {
     <e1: Expression> <a: AssignOp> <e2: Expression> => Statement::Assignment(Box::new(e1), a, Box::new(e2)),
     <e: Expression> <p: PostOp> => match p {
-        PostOp::PlusPlus => Statement::Assignment(Box::new(e), AssignOp::Equal, Expression::BinaryOp(Box::new(e), BinaryOp::Plus, Box::new(Expression::Constant(1)))),
-        PostOp::MinusMinus => Statement::Assignment(Box::new(e), AssignOp::Equal, Expression::BinaryOp(Box::new(e), BinaryOp::Minus, Box::new(Expression::Constant(1))))
+        PostOp::PlusPlus => Statement::Assignment(Box::new(e.clone()), AssignOp::Equal, Box::new(Expression::BinaryOp(Box::new(e), BinaryOp::Plus, Box::new(Expression::Constant(1))))),
+        PostOp::MinusMinus => Statement::Assignment(Box::new(e.clone()), AssignOp::Equal, Box::new(Expression::BinaryOp(Box::new(e), BinaryOp::Minus, Box::new(Expression::Constant(1)))))
     },
     <e: Expression> => Statement::Assignment(Box::new(Expression::EmptyVar), AssignOp::Equal, Box::new(e)),
     <t: Typ> <id: Ident> => Statement::Declaration(t, id),
@@ -176,7 +179,7 @@ PrimaryExpression: Expression = {
     "(" <e: Expression> ")" => e,
     <id: Ident> "(" <al: ArgumentList> ")" => Expression::FunctionCall(id, Box::new(al)),
     <id: Ident> => Expression::Variable(id),
-    <num: Number> => Expression::Constant(num),
+    <number: Number> => Expression::Constant(number),
     // <cond: Expression> "?" <e1: Expression> ":" <e2: Expression> => Expression::Ternary(cond, e1, e2),
 }
 
@@ -200,43 +203,43 @@ Expression: Expression = {
     
     #[precedence(level="1")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order1BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2)),
+    <e1: Expression> <op: Order1BinOp> <e2: Expression> => Expression::BinaryOp(Box::new(e1), op, Box::new(e2)),
 
     #[precedence(level="2")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order2BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2)),
+    <e1: Expression> <op: Order2BinOp> <e2: Expression> => Expression::BinaryOp(Box::new(e1), op, Box::new(e2)),
 
     #[precedence(level="3")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order3BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2)),
+    <e1: Expression> <op: Order3BinOp> <e2: Expression> => Expression::BinaryOp(Box::new(e1), op, Box::new(e2)),
 
     #[precedence(level="4")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order4BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2)),
+    <e1: Expression> <op: Order4BinOp> <e2: Expression> => Expression::BinaryOp(Box::new(e1), op, Box::new(e2)),
 
     #[precedence(level="5")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order5BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2)),
+    <e1: Expression> <op: Order5BinOp> <e2: Expression> => Expression::BinaryOp(Box::new(e1), op, Box::new(e2)),
 
     #[precedence(level="6")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order6BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2)),
+    <e1: Expression> <op: Order6BinOp> <e2: Expression> => Expression::BinaryOp(Box::new(e1), op, Box::new(e2)),
 
     #[precedence(level="7")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order7BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2)),
+    <e1: Expression> <op: Order7BinOp> <e2: Expression> => Expression::BinaryOp(Box::new(e1), op, Box::new(e2)),
 
     #[precedence(level="8")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order8BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2)),
+    <e1: Expression> <op: Order8BinOp> <e2: Expression> => Expression::BinaryOp(Box::new(e1), op, Box::new(e2)),
 
     #[precedence(level="9")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order9BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2)),
+    <e1: Expression> <op: Order9BinOp> <e2: Expression> => Expression::BinaryOp(Box::new(e1), op, Box::new(e2)),
 
     #[precedence(level="10")]
     #[assoc(side="left")]
-    <e1: Expression> <op: Order10BinOp> <e2: Expression> => Expression::BinOp(Box::new(e1), op, Box::new(e2))
+    <e1: Expression> <op: Order10BinOp> <e2: Expression> => Expression::BinaryOp(Box::new(e1), op, Box::new(e2))
 }
 
 ArgumentList: ArgumentList = {
@@ -329,7 +332,7 @@ Typ: Typ = {
     "bool" => Typ::Bool,
     "signed" => Typ::Signed,
     "unsigned" => Typ::Unsigned,
-    "struct" <id: Ident> => Typ::Struct(id)
+    "struct" <id: Ident> => Typ::Struct(id),
     <id: Ident> => Typ::UserDefined(id)
 }
 
@@ -341,6 +344,6 @@ Ident: String = {
     <id:"ident"> => id.to_string()
 }
 
-Number: i32 = {
-    <s:"num"> => s.into_number().unwrap()
+Number: i64 = {
+    <s:"num"> => s
 }
