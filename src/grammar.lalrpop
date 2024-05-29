@@ -79,7 +79,7 @@ extern {
 // Global Grammar
 pub Program: Program = {
     => Program::Empty,
-    <g: GlobalUnit> => Program::GlobalUnit(Box::new(g))
+    <g: GlobalUnit> <p: Program> => Program::GlobalUnit(Box::new(g), Box::new(p))
 }
 
 GlobalUnit: GlobalUnit = {
@@ -91,7 +91,7 @@ GlobalUnit: GlobalUnit = {
 // Function Grammar
 Function: Function = {
     <t: Typ> <id: Ident> "(" <p: ParamList> ")" ";" => Function::Declaration(t, id, Box::new(p)),
-    <t: Typ> <id: Ident> "(" <p: ParamList> ")" "{" <cs: CompoundStatement> "}" => Function::Definition(t, id, Box::new(p), Box::new(cs)) 
+    <t: Typ> <id: Ident> "(" <p: ParamList> ")" <cs: CompoundStatement> => Function::Definition(t, id, Box::new(p), Box::new(cs)) 
 }
 
 ParamList: ParamList = {

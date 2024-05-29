@@ -1,47 +1,57 @@
 // AST Entry point
+#[derive(Debug, Clone)]
 pub enum Program {
     Empty,
-    GlobalUnit(Box<GlobalUnit>),
+    GlobalUnit(Box<GlobalUnit>, Box<Program>),
 }
 
+#[derive(Debug, Clone)]
 pub enum GlobalUnit {
     Function(Box<Function>),
     Struct(Box<Struct>),
     Typedef(Box<Typedef>),
 }
 
+#[derive(Debug, Clone)]
 pub enum Function {
     Declaration(Typ, Ident, Box<ParamList>),
     Definition(Typ, Ident, Box<ParamList>, Box<Statement>),
 }
 
+#[derive(Debug, Clone)]
 pub enum ParamList {
     Empty,
     List(Typ, Ident, Box<ParamList>),
 }
 
+#[derive(Debug, Clone)]
 pub enum Struct {
     Declaration(StructIdent),
     Definition(StructIdent, Box<StructMembers>)
 }
 
+#[derive(Debug, Clone)]
 pub enum StructMembers {
     List(Box<StructDeclaratorList>)
 }
 
+#[derive(Debug, Clone)]
 pub enum StructDeclaratorList {
     Empty,
     ListFollow(StructDeclarator, Box<StructDeclaratorList>)
 }
 
+#[derive(Debug, Clone)]
 pub enum StructDeclarator {
     Declaration(Typ, Ident)
 }
 
+#[derive(Debug, Clone)]
 pub enum Typedef {
     Declaration(Typ, Ident)
 }
 
+#[derive(Debug, Clone)]
 pub enum Statement {
     // Control
     IfElse(Box<Expression>, Box<Statement>, Option<Box<Statement>>),
@@ -62,12 +72,13 @@ pub enum Statement {
     List(Box<StatementList>)
 }
 
+#[derive(Debug, Clone)]
 pub enum StatementList {
     Empty,
     ListFollow(Box<Statement>, Box<StatementList>)
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Expression {
     EmptyVar,
     FunctionCall(Ident, Box<ArgumentList>),
@@ -81,19 +92,20 @@ pub enum Expression {
     BinaryOp(Box<Expression>, BinaryOp, Box<Expression>),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum ArgumentList {
     Empty,
     List(Box<Expression>, Box<ArgumentList>),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum UnaryOp {
     Negate,
     Not,
     BitwiseNot
 }
 
+#[derive(Debug, Clone)]
 pub enum AssignOp {
     Equal,
     PlusEqual,
@@ -108,7 +120,7 @@ pub enum AssignOp {
     BitwiseOrEqual
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum BinaryOp {
     Multiply,
     Divide,
@@ -135,6 +147,7 @@ pub enum PostOp {
     MinusMinus
 }
 
+#[derive(Debug, Clone)]
 pub enum Typ {
     Void,
     Int,
