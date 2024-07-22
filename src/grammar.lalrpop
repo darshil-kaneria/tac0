@@ -82,6 +82,7 @@ pub Program: Program = {
     <g: GlobalUnit> <p: Program> => Program::GlobalUnit(Box::new(g), Box::new(p))
 }
 
+// The only main global entities for now
 GlobalUnit: GlobalUnit = {
     <f: Function> => GlobalUnit::Function(Box::new(f)),
     <s: Struct> => GlobalUnit::Struct(Box::new(s)),

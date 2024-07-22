@@ -7,6 +7,7 @@ pub struct CommandlineArgs {
     pub disable_opt: Vec<String>,
     pub output_file: String,
     pub linker: String,
+    pub typecheck_only: bool,
     
     // Debug options
     pub debug_mode: bool,
@@ -24,6 +25,7 @@ impl CommandlineArgs {
             disable_opt: Vec::new(),
             output_file: String::new(),
             linker: String::new(),
+            typecheck_only: false,
             debug_mode: false,
             debug_ast: false,
             debug_asm: false,
@@ -48,10 +50,9 @@ pub fn parse_args(ctx: &mut Context) -> Result<(), error::ArgParseError> {
             "-O1" => ctx.args.optimization_level = 1,
             "-O2" => ctx.args.optimization_level = 2,
             "-O3" => ctx.args.optimization_level = 3,
+            "-t" | "--typecheck-only" => ctx.args.typecheck_only = true,
             "-l" => {
-
                 ctx.args.linker = args[i+1].clone();
-                i += 1;
             }
             "-d" | "--debug" => ctx.args.debug_mode = true,
             "--debug-ast" => ctx.args.debug_ast = true,
@@ -59,21 +60,44 @@ pub fn parse_args(ctx: &mut Context) -> Result<(), error::ArgParseError> {
             "--debug-ir" => {
                 ctx.args.debug_ir = true;
                 ctx.args.debug_ir_lvl = args[i+1].clone().parse().unwrap();
-                i += 1;
             },
             "-o" | "--output-file" => {
                 ctx.args.output_file = args[i+1].clone();
+                i += 1;
             },
+
+            "--help" => {
+                println!("Usage: taco [--options] [--debug-options] <input>");
+                println!("Options:");
+                println!("\t-O1\t\tOptimization Level 1");
+                println!("\t-O2\t\tOptimization Level 2");
+                println!("\t-O3\t\tOptimization Level 3");
+                println!("\t-l\t\tLinker");
+                println!("\t-o\t\tOutput file");
+                println!("\t--help\t\tDisplay this help message");
+                println!("\t-d, --debug\tEnable debug mode");
+                println!("Debug Options:");
+                println!("\t--debug-ast\t\tPrint AST");
+                println!("\t--debug-asm\t\tPrint Assembly");
+                println!("\t--debug-ir\t\tPrint IR");
+                return Err(error::ArgParseError("".to_string()));
+            }
             
             _ => {
                 if ctx.args.input_file.is_empty() {
                     ctx.args.input_file = args[i].clone();
-                    i += 1;
                 } else {
                     return Err(error::ArgParseError(format!("Unexpected argument: {}", args[i])));
                 }
             }
         }
+
+        i += 1;
+
+    }
+
+    if ctx.args.output_file.is_empty() {
+        ctx.args.output_file = ctx.args.input_file.clone().split(".").collect::<Vec<&str>>()[0].to_string();
     }
 
     Ok(())
