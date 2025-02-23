@@ -1,0 +1,5 @@
+if (a < b) {
+    int x = 5;
+} else {
+    int y = 6;
+}
