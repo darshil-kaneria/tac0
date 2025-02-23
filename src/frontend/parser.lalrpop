@@ -1,19 +1,17 @@
 grammar;
 
-// Bring in our AST types.
 use crate::frontend::ast::*;
 
 // Top-level production.
 pub Program: Program = {
+    "{" <stmts:Stmt*> "}" => Program::Stmts(stmts),
     <stmts:Stmt*> => Program::Stmts(stmts),
 };
 
-// A block is a series of statements enclosed in braces.
 Block: Vec<Stmt> = {
     "{" <stmts:Stmt*> "}" => stmts,
 };
 
-// Extend Stmt to include control flow constructs.
 Stmt: Stmt = {
     <decl:Decl> ";" => Stmt::Decl(decl),
     <expr:Expr> ";" => Stmt::Expr(expr),
@@ -21,7 +19,7 @@ Stmt: Stmt = {
         Stmt::IfElse { condition: cond, then_block, else_block }
     },
     "if" "(" <cond:Expr> ")" <then_block:Block> => {
-        Stmt::If { condition: cond, then_block: then_block }
+        Stmt::If { condition: cond, then_block }
     },
     "while" "(" <cond:Expr> ")" <body:Block> => {
         Stmt::While { condition: cond, body }
@@ -31,43 +29,74 @@ Stmt: Stmt = {
     },
 };
 
-// Declarations.
 Decl: Decl = {
     "int" <id:Ident> "=" <expr:Expr> => Decl::VarDecl { typ: Type::Int, name: id, init: Some(expr) },
     "int" <id:Ident> => Decl::VarDecl { typ: Type::Int, name: id, init: None },
 };
 
-// Identifier lexer rule.
 Ident: String = {
     r"[a-zA-Z_][a-zA-Z0-9_]*" => String::from(<>),
 };
 
-// Expression: start with assignment.
 Expr: Expr = {
-    <assign:AssignExpr> => assign,
+    // Assignment form: variable = expression.
+    <id:Ident> "=" <rhs:Expr> => Expr::Assign(Box::new(Expr::Var(id)), Box::new(rhs)),
+    <lor:LogicalOrExpr> => lor,
 };
 
-// Assignment expression.
-AssignExpr: Expr = {
-    <id:Ident> "=" <rhs:AssignExpr> => Expr::Assign(Box::new(Expr::Var(id)), Box::new(rhs)),
+LogicalOrExpr: Expr = {
+    <left:LogicalOrExpr> "||" <right:LogicalAndExpr> =>
+        Expr::BinaryOp(Box::new(left), BinOp::Or, Box::new(right)),
+    <and:LogicalAndExpr> => and,
+};
+
+LogicalAndExpr: Expr = {
+    <left:LogicalAndExpr> "&&" <right:EqualityExpr> =>
+        Expr::BinaryOp(Box::new(left), BinOp::And, Box::new(right)),
+    <eq:EqualityExpr> => eq,
+};
+
+EqualityExpr: Expr = {
+    <left:EqualityExpr> "==" <right:RelationalExpr> =>
+        Expr::BinaryOp(Box::new(left), BinOp::Eq, Box::new(right)),
+    <left:EqualityExpr> "!=" <right:RelationalExpr> =>
+        Expr::BinaryOp(Box::new(left), BinOp::Neq, Box::new(right)),
+    <rel:RelationalExpr> => rel,
+};
+
+RelationalExpr: Expr = {
+    <left:RelationalExpr> "<" <right:AddExpr> =>
+        Expr::BinaryOp(Box::new(left), BinOp::Lt, Box::new(right)),
+    <left:RelationalExpr> "<=" <right:AddExpr> =>
+        Expr::BinaryOp(Box::new(left), BinOp::Le, Box::new(right)),
+    <left:RelationalExpr> ">" <right:AddExpr> =>
+        Expr::BinaryOp(Box::new(left), BinOp::Gt, Box::new(right)),
+    <left:RelationalExpr> ">=" <right:AddExpr> =>
+        Expr::BinaryOp(Box::new(left), BinOp::Ge, Box::new(right)),
     <add:AddExpr> => add,
 };
 
-// Addition and subtraction.
 AddExpr: Expr = {
-    <l:AddExpr> "+" <r:MulExpr> => Expr::BinaryOp(Box::new(l), BinOp::Add, Box::new(r)),
-    <l:AddExpr> "-" <r:MulExpr> => Expr::BinaryOp(Box::new(l), BinOp::Sub, Box::new(r)),
+    <l:AddExpr> "+" <r:MulExpr> =>
+        Expr::BinaryOp(Box::new(l), BinOp::Add, Box::new(r)),
+    <l:AddExpr> "-" <r:MulExpr> =>
+        Expr::BinaryOp(Box::new(l), BinOp::Sub, Box::new(r)),
     <mul:MulExpr> => mul,
 };
 
-// Multiplication and division.
 MulExpr: Expr = {
-    <l:MulExpr> "*" <r:PrimaryExpr> => Expr::BinaryOp(Box::new(l), BinOp::Mul, Box::new(r)),
-    <l:MulExpr> "/" <r:PrimaryExpr> => Expr::BinaryOp(Box::new(l), BinOp::Div, Box::new(r)),
+    <l:MulExpr> "*" <r:UnaryExpr> =>
+        Expr::BinaryOp(Box::new(l), BinOp::Mul, Box::new(r)),
+    <l:MulExpr> "/" <r:UnaryExpr> =>
+        Expr::BinaryOp(Box::new(l), BinOp::Div, Box::new(r)),
+    <un:UnaryExpr> => un,
+};
+
+UnaryExpr: Expr = {
+    "!" <expr:UnaryExpr> => Expr::UnaryOp(UnaryOp::Not, Box::new(expr)),
     <prim:PrimaryExpr> => prim,
 };
 
-// Primary expressions.
 PrimaryExpr: Expr = {
     r"[0-9]+" => Expr::Literal(<>.parse().unwrap()),
     <id:Ident> => Expr::Var(id),

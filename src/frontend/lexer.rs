@@ -1,4 +1,3 @@
-// src/frontend/lexer.rs (rust)
 #[derive(Debug, Clone)]
 pub enum Token {
     Number(i64),
@@ -10,6 +9,8 @@ pub enum Token {
     LParen,
     RParen,
     Semi,
+    LBrace,
+    RBrace,
 }
 
 pub struct Lexer<'input> {
@@ -35,6 +36,8 @@ impl<'input> Lexer<'input> {
             '/' => { self.pos += 1; Some(Token::Slash) },
             '(' => { self.pos += 1; Some(Token::LParen) },
             ')' => { self.pos += 1; Some(Token::RParen) },
+            '{' => { self.pos += 1; Some(Token::LBrace) },
+            '}' => { self.pos += 1; Some(Token::RBrace) },
             ';' => { self.pos += 1; Some(Token::Semi) },
             '0'..='9' => Some(self.lex_number()),
             _ if ch.is_alphabetic() || ch == '_' => Some(self.lex_ident()),

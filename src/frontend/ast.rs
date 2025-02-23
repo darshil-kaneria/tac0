@@ -1,5 +1,3 @@
-// src/frontend/ast.rs
-
 #[derive(Debug)]
 pub enum Program {
     Stmts(Vec<Stmt>),
@@ -28,7 +26,6 @@ pub enum Stmt {
         increment: Expr, 
         body: Vec<Stmt>,
     },
-    // Future: additional control flow or statements.
 }
 
 
@@ -46,15 +43,23 @@ pub enum Expr {
     Literal(i32),
     Var(String),
     BinaryOp(Box<Expr>, BinOp, Box<Expr>),
+    UnaryOp(UnaryOp, Box<Expr>),
     Assign(Box<Expr>, Box<Expr>),
 }
 
 #[derive(Debug)]
 pub enum BinOp {
-    Add,
-    Sub,
-    Mul,
-    Div,
+    Add, Sub, Mul, Div,
+    Lt, Le, Gt, Ge,
+    Eq, Neq,
+    And, Or,
+    Not,
+}
+
+#[derive(Debug)]
+pub enum UnaryOp {
+    Not,
+    Neg,
 }
 
 #[derive(Debug)]

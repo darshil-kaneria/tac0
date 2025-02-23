@@ -1,14 +1,17 @@
-// src/main.rs
-
 mod frontend;
 mod middle;
 
 use frontend::ast::*;
 use frontend::parser;
+use middle::ir::*;
+use middle::irgen;
+use middle::pass_manager::*;
+use middle::print_ir;
+use middle::ssa;
+use std::convert;
 use std::fs;
 
 fn main() {
-    // Read the source code from a file (or hardcode a string for now).
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
         eprintln!("Usage: {} <source file>", args[0]);
@@ -16,16 +19,19 @@ fn main() {
     }
     let filename = &args[1];
     let src = fs::read_to_string(filename).expect("Unable to read file");
+    let ast = parser::ProgramParser::new().parse(&src).expect("Parse error");
 
-    // Parse the input into an AST.
-    match parser::ProgramParser::new().parse(&src) {
-        Ok(ast) => {
-            println!("Parsed AST: {:#?}", ast);
-            // In Phase 1, you can then convert the AST to IR.
-            // For now, you might simply print or further process the AST.
-        }
-        Err(e) => {
-            eprintln!("Parse error: {:?}", e);
-        }
-    }
+    // To lower ast to IR, we have an IR generator.
+    let mut irgen = irgen::IRGenerator::new();
+    let ir = irgen.lower_program(&ast);
+
+
+    let mut pass_manager = PassManager::new();
+
+    // Start adding all the passes in order
+    pass_manager.add_pass(print_ir::print_ir);
+    pass_manager.add_pass(ssa::convert_to_ssa);
+
+    pass_manager.run(ir);
+
 }
